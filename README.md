@@ -141,3 +141,10 @@ python3 ots.py
 ```
 
 The solver will output the minimum cost and the list of transmission lines switched off.
+
+---
+
+## 5. Contributors
+
+- **Salvador Pineda** (spineda@uma.es) - University of Málaga
+- **Juan Miguel Morales** (juan.morales@uma.es) - University of Málaga
