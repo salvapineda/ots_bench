@@ -27,6 +27,50 @@ Consider a power system represented by a graph with nodes $\mathcal{N}$ and tran
 
 Each line $l = (n,m) \in \mathcal{L}$ has a susceptance $b_l$ and thermal capacity limits $[\underline{f}_l, \overline{f}_l]$. The operational status of each line is modeled by a binary variable $x_l \in \{0,1\}$, where $x_l = 1$ if the line is active and $x_l = 0$ if it is disconnected. We introduce a dummy variable $\tilde{f}_l$ to capture the unconstrained physical power flow dictated by the bus voltage angles $\theta_n$ and $\theta_m$. 
 
+### 2.1 Conceptual Non-Linear Formulation
+The non-linear, mixed-integer DC-OTS problem is conceptually formulated as follows:
+
+$$
+\begin{align}
+\min_{p, f, \tilde{f}, \theta, x} \quad & \sum_{n \in \mathcal{N}} c_{n} \, p_{n} \\
+\text{subject to} \quad & \nonumber \\ 
+& f_l = x_l \tilde{f}_l, \quad \forall l \in \mathcal{L} \\
+& \underline{f}_l \leq f_l \leq \overline{f}_l, \quad \forall l \in \mathcal{L} \\
+& \tilde{f}_l = b_l(\theta_n-\theta_m), \quad \forall l=(n,m) \in \mathcal{L} \\
+& p_n - d_n = \sum_{l\in\mathcal{L}(n,\cdot)} f_l - \sum_{l\in\mathcal{L}(\cdot,n)} f_l, \quad \forall n \in \mathcal{N} \\
+& \underline{p}_n \leq p_n \leq \overline{p}_n, \quad \forall n \in \mathcal{N} \\
+& \theta_1 = 0 \\
+& x_l \in \{0,1\}, \quad \forall l \in \mathcal{L}
+\end{align}
+$$
+
+### 2.2 Linearized MILP Formulation (Big-M Method)
+Because the product $x_l \tilde{f}_l$ is non-linear, the actual solver code implements a linearized Mixed-Integer Linear Program (MILP). By introducing a pair of sufficiently large constants $\underline{M}_{l}<0$ and $\overline{M}_{l}>0$ per line, the non-linear relationship is replaced by disjunctive linear constraints. The complete MILP formulation is:
+
+$$
+\begin{align}
+\min_{p, f, \tilde{f}, \theta, x} \quad & \sum_{n \in \mathcal{N}} c_{n} \, p_{n} \\
+\text{subject to} \quad & \nonumber \\ 
+& (1-x_l)\underline{M}_l \leq -f_l + \tilde{f}_l \leq (1-x_l)\overline{M}_{l}, \quad \forall l \in \mathcal{L} \\
+& x_l\underline{f}_l \leq f_l \leq x_l\overline{f}_l, \quad \forall l \in \mathcal{L} \\
+& \tilde{f}_l = b_l(\theta_n-\theta_m), \quad \forall l=(n,m) \in \mathcal{L} \\
+& p_n - d_n = \sum_{l\in\mathcal{L}(n,\cdot)} f_l - \sum_{l\in\mathcal{L}(\cdot,n)} f_l, \quad \forall n \in \mathcal{N} \\
+& \underline{p}_n \leq p_n \leq \overline{p}_n, \quad \forall n \in \mathcal{N} \\
+& \theta_1 = 0 \\
+& x_l \in \{0,1\}, \quad \forall l \in \mathcal{L}
+\end{align}
+$$
+
+Where $\underline{M}_{l}$ and $\overline{M}_{l}$ are guaranteed to be valid bounds of the dummy flow variable $\tilde{f}_l$ when the line $l$ is disconnected ($x_l = 0$).
+
+> **Note on LLM Complexity:** Correctly identifying the non-linear interaction in Section 2.1 and automatically reformulating it into the precise, computationally stable linear bounds shown in Section 2.2 is a high-level mathematical modeling task where current frontier LLMs consistently fail.
+
+## 2. Mathematical Formulation
+
+Consider a power system represented by a graph with nodes $\mathcal{N}$ and transmission lines $\mathcal{L}$. Each node $n \in \mathcal{N}$ has a demand $d_n$ and a generator producing power $p_n$ within limits $[\underline{p}_n, \overline{p}_n]$ at a marginal cost $c_n$. 
+
+Each line $l = (n,m) \in \mathcal{L}$ has a susceptance $b_l$ and thermal capacity limits $[\underline{f}_l, \overline{f}_l]$. The operational status of each line is modeled by a binary variable $x_l \in \{0,1\}$, where $x_l = 1$ if the line is active and $x_l = 0$ if it is disconnected. We introduce a dummy variable $\tilde{f}_l$ to capture the unconstrained physical power flow dictated by the bus voltage angles $\theta_n$ and $\theta_m$. 
+
 The non-linear, mixed-integer DC-OTS problem is formulated as follows:
 
 $$
