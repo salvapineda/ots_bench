@@ -4,31 +4,50 @@ This repository contains the benchmark data, mathematical formulations, and solv
 
 ---
 
-## 1. Problem Descriptions
-
-### Vague, Business-Level Description
-> *"We are running into high operational costs across our electricity transmission grid during peak hours due to congestion. A colleague suggested that we could actually save money on generation costs by strategically opening up certain circuit breakers and taking specific transmission lines entirely offline. This sounds completely backwards—how does removing a power line lower costs? We need a decision-making tool that looks at our current grid topology, line capacities, and generator costs, and tells us exactly which lines to switch off to minimize our total system cost without causing blackouts or violating basic electrical physics."*
+## 1. Problem Description
 
 ### Precise Technical Description
-The Optimal Transmission Switching (OTS) problem aims to minimize the total generation cost in an electricity network over a specific time horizon by optimizing both generator outputs and network topology (line switching statuses). 
+The Optimal Transmission Switching (OTS) problem aims to minimize the total generation cost in an electricity network by optimizing both generator outputs and network topology (line switching statuses). 
 
 Given a network graph $\mathcal{G} = (\mathcal{N}, \mathcal{L})$ where $\mathcal{N}$ is the set of buses and $\mathcal{L}$ is the set of transmission lines:
 * **Objective:** Minimize total active power generation cost.
-* **Decision Variables:** Continuous generation outputs ($P_{g}$), continuous bus voltage angles ($\theta_i$), and binary line status variables ($z_l \in \{0,1\}$), where $z_l = 0$ indicates a line is switched off.
+* **Decision Variables:** Continuous generation outputs ($p_n$), continuous bus voltage angles ($\theta_n$), and binary line status variables ($x_l \in \{0,1\}$), where $x_l = 0$ indicates a line is switched off.
 * **Constraints:** DC power flow equations, line thermal capacity limits, generation bounds, and bus voltage angle differences. 
 
-To handle the conditional power flow when a line is opened ($z_l = 0$), the disjunctive constraints are formulated using the **Big-M optimization method**. This creates a computationally challenging Mixed-Integer Linear Program (MILP) that requires careful parameter tuning to avoid numerical instability.
+To handle the conditional power flow when a line is opened ($x_l = 0$), the bilinear constraints are linearized using the **Big-M optimization method**. This creates a computationally challenging Mixed-Integer Linear Program (MILP).
 
 ---
 
 ## 2. Mathematical Formulation
 
-Consider a power system represented by a graph with nodes $\mathcal{N}$ and transmission lines $\mathcal{L}$. Each node $n \in \mathcal{N}$ has a demand $d_n$ and a generator producing power $p_n$ within limits $[\underline{p}_n, \overline{p}_n]$ at a marginal cost $c_n$. 
+### 2.1 Notation
 
-Each line $l = (n,m) \in \mathcal{L}$ has a susceptance $b_l$ and thermal capacity limits $[\underline{f}_l, \overline{f}_l]$. The operational status of each line is modeled by a binary variable $x_l \in \{0,1\}$, where $x_l = 1$ if the line is active and $x_l = 0$ if it is disconnected. We introduce a dummy variable $\tilde{f}_l$ to capture the unconstrained physical power flow dictated by the bus voltage angles $\theta_n$ and $\theta_m$. 
+Consider a power system represented by a graph with nodes $\mathcal{N}$ and transmission lines $\mathcal{L}$. 
 
-### 2.1 Conceptual Non-Linear Formulation
-The non-linear, mixed-integer DC-OTS problem is conceptually formulated as follows:
+**Sets:**
+- $\mathcal{N}$: Set of buses (nodes)
+- $\mathcal{L}$: Set of transmission lines (arcs)
+
+**Parameters:**
+- $d_n$: Demand (load) at bus $n \in \mathcal{N}$ (MW)
+- $c_n$: Marginal generation cost at bus $n \in \mathcal{N}$ (\$/MWh)
+- $\underline{p}_n, \overline{p}_n$: Lower and upper generation limits at bus $n \in \mathcal{N}$ (MW)
+- $b_l$: Susceptance of line $l \in \mathcal{L}$ (1/Ω)
+- $\underline{f}_l, \overline{f}_l$: Lower and upper thermal capacity limits of line $l \in \mathcal{L}$ (MW)
+- For line $l = (n, m)$: from-bus $n$ and to-bus $m$
+
+**Decision Variables:**
+- $p_n$: Active power generation at bus $n \in \mathcal{N}$ (MW, continuous)
+- $\theta_n$: Bus voltage angle at bus $n \in \mathcal{N}$ (radians, continuous)
+- $f_l$: Active power flow on line $l \in \mathcal{L}$ (MW, continuous)
+- $\tilde{f}_l$: Dummy/unconstrained flow on line $l \in \mathcal{L}$ corresponding to $b_l(\theta_n - \theta_m)$ (MW, continuous)
+- $x_l$: Binary status of line $l \in \mathcal{L}$ (1 = on, 0 = off)
+
+---
+
+### 2.2 Non-Linear Formulation (Conceptual)
+
+The non-linear, mixed-integer DC-OTS problem can be conceptually formulated as:
 
 $$
 \begin{align}
@@ -44,14 +63,19 @@ $$
 \end{align}
 $$
 
-### 2.2 Linearized MILP Formulation (Big-M Method)
-Because the product $x_l \tilde{f}_l$ is non-linear, the actual solver code implements a linearized Mixed-Integer Linear Program (MILP). By introducing a pair of sufficiently large constants $\underline{M}_{l}<0$ and $\overline{M}_{l}>0$ per line, the non-linear relationship is replaced by disjunctive linear constraints. The complete MILP formulation is:
+**Key Challenge:** The constraint $f_l = x_l \tilde{f}_l$ is bilinear: when $x_l = 0$ (line off), it forces $f_l = 0$; when $x_l = 1$ (line on), it requires $f_l = \tilde{f}_l$. This product of a binary and continuous variable cannot be directly solved by standard MILP solvers.
+
+---
+
+### 2.3 Linearized MILP Formulation (Big-M Method)
+
+To reformulate the problem as a Mixed-Integer Linear Program (MILP), we replace the bilinear constraint with linear Big-M disjunctive constraints. For each line $l$, we introduce constants $M_{l}^- < 0$ and $M_{l}^+ > 0$ that bound $\tilde{f}_l$ when the line is disconnected. The linearized formulation is:
 
 $$
 \begin{align}
 \min_{p, f, \tilde{f}, \theta, x} \quad & \sum_{n \in \mathcal{N}} c_{n} \, p_{n} \\
 \text{subject to} \quad & \nonumber \\ 
-& (1-x_l)\underline{M}_l \leq -f_l + \tilde{f}_l \leq (1-x_l)\overline{M}_{l}, \quad \forall l \in \mathcal{L} \\
+& (1-x_l)M_{l}^- \leq -f_l + \tilde{f}_l \leq (1-x_l)M_{l}^+, \quad \forall l \in \mathcal{L} \\
 & x_l\underline{f}_l \leq f_l \leq x_l\overline{f}_l, \quad \forall l \in \mathcal{L} \\
 & \tilde{f}_l = b_l(\theta_n-\theta_m), \quad \forall l=(n,m) \in \mathcal{L} \\
 & p_n - d_n = \sum_{l\in\mathcal{L}(n,\cdot)} f_l - \sum_{l\in\mathcal{L}(\cdot,n)} f_l, \quad \forall n \in \mathcal{N} \\
@@ -61,14 +85,45 @@ $$
 \end{align}
 $$
 
-Where $\underline{M}_{l}$ and $\overline{M}_{l}$ are guaranteed to be valid bounds of the dummy flow variable $\tilde{f}_l$ when the line $l$ is disconnected ($x_l = 0$).
+**Linearization Logic:**
+- When $x_l = 1$: the first constraint becomes $0 \leq -f_l + \tilde{f}_l \leq 0$, i.e., $f_l = \tilde{f}_l$ (coupling).
+- When $x_l = 0$: the first constraint loosens to $M_{l}^- \leq -f_l + \tilde{f}_l \leq M_{l}^+$, decoupling $f_l$ and $\tilde{f}_l$.
+- The second constraint forces $f_l = 0$ when $x_l = 0$ (line is off), and applies thermal limits $\underline{f}_l \leq f_l \leq \overline{f}_l$ when $x_l = 1$.
 
-> **Note on LLM Complexity:** Correctly identifying the non-linear interaction in Section 2.1 and automatically reformulating it into the precise, computationally stable linear bounds shown in Section 2.2 is a high-level mathematical modeling task where current frontier LLMs consistently fail.
+The Big-M constants are computed internally based on the network topology to ensure numerical stability and correctness.
+
+> **Note:** Automatically reformulating the bilinear constraint into the correct Big-M form is a challenging high-level optimization modeling task that serves as a good benchmark for LLM capabilities.
+
+---
 
 ## 3. Repository Structure & Artifacts
 
 * `/data`: Contains `.csv` files representing standard grid topologies (e.g., modified IEEE test cases) containing bus data, line parameters ($B_l, F_l^{max}$), and generator cost coefficients ($C_g$).
 * `/src`: Contains the Python implementation utilizing **Gurobi** to solve the MILP formulation.
+
+---
+
+## 3.1 Data Files Format
+
+**buses.csv:** Contains bus data with columns:
+- `BUS_ID`: Bus identifier
+- `PD`: Demand (load) at the bus (MW)
+- `PMIN`: Minimum generation capacity (MW)
+- `PMAX`: Maximum generation capacity (MW)
+- `COST`: Marginal generation cost (\$/MWh)
+
+**branches.csv:** Contains transmission line data with columns:
+- `F_BUS`: From-bus ID
+- `T_BUS`: To-bus ID
+- `BR_X`: Line reactance (Ω), used to compute susceptance $b_l = 1/BR_X$
+- `RATE_A`: Thermal capacity limit (MW)
+
+The Big-M parameters ($M_l^+$ and $M_l^-$) are computed internally during optimization based on the network topology:
+1. For each line $l$, compute the maximum angle difference: $\Delta\theta_{max,l} = \frac{\text{RATE\_A}_l}{b_l}$
+2. Sort these values and sum the top $N-1$ values (where $N$ is the number of buses), giving $\Delta\theta_{max}$
+3. The Big-M constants are: $M_l^+ = \Delta\theta_{max} \cdot b_l$ and $M_l^- = -M_l^+$
+
+This approach ensures numerically stable bounds based on actual network characteristics rather than arbitrary constants.
 
 ---
 

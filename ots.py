@@ -57,7 +57,7 @@ def ots_gurobi(buses_file, branches_file, baseMVA=100, time_limit=3600):
     buses_file : str
         Path to buses CSV file with columns: BUS_ID, PD, PMIN, PMAX, COST
     branches_file : str
-        Path to branches CSV file with columns: F_BUS, T_BUS, BR_X, RATE_A, PFUPDC, PFLODC
+        Path to branches CSV file with columns: F_BUS, T_BUS, BR_X, RATE_A
     baseMVA : float
         Base MW value for scaling (default: 100)
     time_limit : float
@@ -87,9 +87,16 @@ def ots_gurobi(buses_file, branches_file, baseMVA=100, time_limit=3600):
     f_max = branches["RATE_A"].values  # \bar{f}_l (thermal capacity)
     f_min = -f_max  # \underline{f}_l
     
-    # Big-M parameters
-    M_up = branches["PFUPDC"].values  # \bar{M}_l
-    M_lo = branches["PFLODC"].values  # \underline{M}_l
+    # Compute Big-M parameters internally
+    # Based on the longest path in the network (N-1 = 117 lines for 118 buses)
+    # max_angle_diff = sum of top (N-1) angle differences
+    angle_diff_per_line = f_max / b  # RATE_A / b_l (angle difference per unit susceptance)
+    largest_n_minus_1 = np.sort(angle_diff_per_line)[::-1][:N-1]  # Top N-1 values
+    max_angle_diff = np.sum(largest_n_minus_1)
+    
+    # Big-M values are product of max angle difference and susceptance
+    M_up = max_angle_diff * b  # \bar{M}_l
+    M_lo = -M_up  # \underline{M}_l
     
     # Bus parameters
     d = buses["PD"].values  # Demand d_n
