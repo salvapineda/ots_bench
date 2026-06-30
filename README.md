@@ -67,13 +67,13 @@ $$
 
 ### 2.3 Linearized MILP Formulation (Big-M Method)
 
-To reformulate the problem as a Mixed-Integer Linear Program (MILP), we replace the bilinear constraint with linear Big-M disjunctive constraints. For each line $l$, we introduce constants $M_{l}^- < 0$ and $M_{l}^+ > 0$ that bound $\tilde{f}_l$ when the line is disconnected. The linearized formulation is:
+To reformulate the problem as a Mixed-Integer Linear Program (MILP), we replace the bilinear constraint with linear Big-M disjunctive constraints. For each line $l$, we introduce constants $M_l^- < 0$ and $M_l^+ > 0$ that bound $\tilde{f}_l$ when the line is disconnected. The linearized formulation is:
 
 $$
 \begin{align}
 \min_{p, f, \tilde{f}, \theta, x} \quad & \sum_{n \in \mathcal{N}} c_{n} \, p_{n} \\
 \text{subject to} \quad & \nonumber \\ 
-& (1-x_l)M_{l}^- \leq -f_l + \tilde{f}_l \leq (1-x_l)M_{l}^+, \quad \forall l \in \mathcal{L} \\
+& (1-x_l)M_l^- \leq -f_l + \tilde{f}_l \leq (1-x_l)M_l^+, \quad \forall l \in \mathcal{L} \\
 & x_l\underline{f}_l \leq f_l \leq x_l\overline{f}_l, \quad \forall l \in \mathcal{L} \\
 & \tilde{f}_l = b_l(\theta_n-\theta_m), \quad \forall l=(n,m) \in \mathcal{L} \\
 & p_n - d_n = \sum_{l\in\mathcal{L}(n,\cdot)} f_l - \sum_{l\in\mathcal{L}(\cdot,n)} f_l, \quad \forall n \in \mathcal{N} \\
@@ -85,7 +85,7 @@ $$
 
 **Linearization Logic:**
 - When $x_l = 1$: $0 \leq -f_l + \tilde{f}_l \leq 0$, i.e., $f_l = \tilde{f}_l$ (coupling).
-- When $x_l = 0$: $M_{l}^{-} \leq -f_l + \tilde{f}_l \leq M_{l}^{+}$, decoupling $f_l$ and $\tilde{f}_l$.
+- When $x_l = 0$: $M_l^- \leq -f_l + \tilde{f}_l \leq M_l^+$, decoupling $f_l$ and $\tilde{f}_l$.
 - The second constraint forces $f_l = 0$ when $x_l = 0$ (line is off), and applies thermal limits $\underline{f}_l \leq f_l \leq \overline{f}_l$ when $x_l = 1$.
 
 The Big-M constants are computed internally based on the network topology to ensure numerical stability and correctness.
