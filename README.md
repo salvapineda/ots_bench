@@ -12,9 +12,7 @@ The Optimal Transmission Switching (OTS) problem aims to minimize the total gene
 Given a network graph $\mathcal{G} = (\mathcal{N}, \mathcal{L})$ where $\mathcal{N}$ is the set of buses and $\mathcal{L}$ is the set of transmission lines:
 * **Objective:** Minimize total active power generation cost.
 * **Decision Variables:** Continuous generation outputs ($p_n$), continuous bus voltage angles ($\theta_n$), and binary line status variables ($x_l \in \{0,1\}$), where $x_l = 0$ indicates a line is switched off.
-* **Constraints:** DC power flow equations, line thermal capacity limits, generation bounds, and bus voltage angle differences. 
-
-To handle the conditional power flow when a line is opened ($x_l = 0$), the bilinear constraints are linearized using the **Big-M optimization method**. This creates a computationally challenging Mixed-Integer Linear Program (MILP).
+* **Constraints:** DC power flow equations, line thermal capacity limits and generation bounds. 
 
 ---
 
@@ -87,23 +85,15 @@ $$
 
 **Linearization Logic:**
 - When $x_l = 1$: the first constraint becomes $0 \leq -f_l + \tilde{f}_l \leq 0$, i.e., $f_l = \tilde{f}_l$ (coupling).
-- When $x_l = 0$: the first constraint loosens to $M_{l}^- \leq -f_l + \tilde{f}_l \leq M_{l}^+$, decoupling $f_l$ and $\tilde{f}_l$.
+- When $x_l = 0$: the first constraint loosens to $M_{l}^{-} \leq -f_l + \tilde{f}_l \leq M_{l}^{+}$, decoupling $f_l$ and $\tilde{f}_l$.
 - The second constraint forces $f_l = 0$ when $x_l = 0$ (line is off), and applies thermal limits $\underline{f}_l \leq f_l \leq \overline{f}_l$ when $x_l = 1$.
 
 The Big-M constants are computed internally based on the network topology to ensure numerical stability and correctness.
 
-> **Note:** Automatically reformulating the bilinear constraint into the correct Big-M form is a challenging high-level optimization modeling task that serves as a good benchmark for LLM capabilities.
 
 ---
 
 ## 3. Repository Structure & Artifacts
-
-* `/data`: Contains `.csv` files representing standard grid topologies (e.g., modified IEEE test cases) containing bus data, line parameters ($B_l, F_l^{max}$), and generator cost coefficients ($C_g$).
-* `/src`: Contains the Python implementation utilizing **Gurobi** to solve the MILP formulation.
-
----
-
-## 3.1 Data Files Format
 
 **buses.csv:** Contains bus data with columns:
 - `BUS_ID`: Bus identifier
@@ -119,7 +109,7 @@ The Big-M constants are computed internally based on the network topology to ens
 - `RATE_A`: Thermal capacity limit (MW)
 
 The Big-M parameters ($M_l^+$ and $M_l^-$) are computed internally during optimization based on the network topology:
-1. For each line $l$, compute the maximum angle difference: $\Delta\theta_{max,l} = \frac{\text{RATE\_A}_l}{b_l}$
+1. For each line $l$, compute the maximum angle difference: $\Delta\theta_{max,l} = \frac{\text{RATEA}_l}{b_l}$
 2. Sort these values and sum the top $N-1$ values (where $N$ is the number of buses), giving $\Delta\theta_{max}$
 3. The Big-M constants are: $M_l^+ = \Delta\theta_{max} \cdot b_l$ and $M_l^- = -M_l^+$
 
