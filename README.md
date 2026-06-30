@@ -84,8 +84,8 @@ $$
 $$
 
 **Linearization Logic:**
-- When $x_l = 1$: the first constraint becomes $0 \leq -f_l + \tilde{f}_l \leq 0$, i.e., $f_l = \tilde{f}_l$ (coupling).
-- When $x_l = 0$: the first constraint loosens to $M_{l}^{-} \leq -f_l + \tilde{f}_l \leq M_{l}^{+}$, decoupling $f_l$ and $\tilde{f}_l$.
+- When $x_l = 1$: $0 \leq -f_l + \tilde{f}_l \leq 0$, i.e., $f_l = \tilde{f}_l$ (coupling).
+- When $x_l = 0$: $M_{l}^{-} \leq -f_l + \tilde{f}_l \leq M_{l}^{+}$, decoupling $f_l$ and $\tilde{f}_l$.
 - The second constraint forces $f_l = 0$ when $x_l = 0$ (line is off), and applies thermal limits $\underline{f}_l \leq f_l \leq \overline{f}_l$ when $x_l = 1$.
 
 The Big-M constants are computed internally based on the network topology to ensure numerical stability and correctness.
