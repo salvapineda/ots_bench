@@ -132,10 +132,22 @@ This approach ensures numerically stable bounds based on actual network characte
 ### Prerequisites
 * Python 3.10+
 * Gurobi Optimizer (with a valid license installed)
-* `pandas`, `gurobipy`
 
 ### Installation
+
 ```bash
-git clone [https://github.com/your-username/ots_bench.git](https://github.com/your-username/ots_bench.git)
+git clone https://github.com/salvapineda/ots_bench.git
 cd ots_bench
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+### Running the Solver
+
+```bash
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 ots.py
+```
+
+The solver will output the minimum cost and the list of transmission lines switched off.
